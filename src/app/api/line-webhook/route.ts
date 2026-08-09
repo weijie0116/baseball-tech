@@ -60,6 +60,10 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+// "預約 梁維傑 8/15 14:00" — coach books a lesson slot on a student's
+// behalf, sent from the same LINE account used for video submission.
+const BOOKING_RE = /^預約\s+(\S+)\s+(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/;
+
 async function handleEvent(admin: ReturnType<typeof createAdminClient>, event: LineEvent) {
   if (event.type !== "message" || !event.source?.userId || !event.message) return;
 
@@ -68,6 +72,12 @@ async function handleEvent(admin: ReturnType<typeof createAdminClient>, event: L
 
   if (event.message.type === "text" && event.message.text) {
     const text = event.message.text.trim();
+    const bookingMatch = text.match(BOOKING_RE);
+
+    if (bookingMatch) {
+      await handleBooking(admin, lineUserId, replyToken, bookingMatch);
+      return;
+    }
 
     const { data: students } = await admin
       .from("profiles")
@@ -129,5 +139,82 @@ async function handleEvent(admin: ReturnType<typeof createAdminClient>, event: L
     if (replyToken) {
       await replyMessage(replyToken, `已收到「${student?.full_name ?? "該學員"}」的影片,會盡快處理分析。`);
     }
+  }
+}
+
+function resolveBookingDate(month: number, day: number): string {
+  const now = new Date();
+  let year = now.getFullYear();
+  const candidate = new Date(year, month - 1, day);
+  // "8/15" typed in December should mean next year's Aug 15, not one that
+  // already passed months ago — roll forward if the date is more than a
+  // month in the past.
+  const oneMonthMs = 31 * 24 * 60 * 60 * 1000;
+  if (candidate.getTime() < now.getTime() - oneMonthMs) {
+    year += 1;
+  }
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return `${year}-${mm}-${dd}`;
+}
+
+async function handleBooking(
+  admin: ReturnType<typeof createAdminClient>,
+  lineUserId: string,
+  replyToken: string | undefined,
+  match: RegExpMatchArray
+) {
+  const [, nameText, monthStr, dayStr, hourStr, minuteStr] = match;
+
+  const { data: students } = await admin
+    .from("profiles")
+    .select("id, full_name")
+    .eq("role", "student")
+    .ilike("full_name", `%${nameText}%`);
+
+  if (!students || students.length === 0) {
+    if (replyToken) await replyMessage(replyToken, `找不到叫「${nameText}」的學員,請確認姓名後再傳一次。`);
+    return;
+  }
+  if (students.length > 1) {
+    const names = students.map((s) => s.full_name).join("、");
+    if (replyToken) await replyMessage(replyToken, `找到多位符合的學員(${names}),請傳更完整的姓名。`);
+    return;
+  }
+  const student = students[0];
+
+  const { data: coaches } = await admin.from("profiles").select("id").eq("role", "coach");
+  if (!coaches || coaches.length !== 1) {
+    if (replyToken) {
+      await replyMessage(
+        replyToken,
+        coaches && coaches.length > 1
+          ? "系統裡有多位教練,LINE 預約目前還不支援指定教練,請直接到網站登記。"
+          : "系統裡找不到教練帳號,請直接到網站登記預約。"
+      );
+    }
+    return;
+  }
+  const coachId = coaches[0].id;
+
+  const scheduledDate = resolveBookingDate(Number(monthStr), Number(dayStr));
+  const scheduledTime = `${hourStr.padStart(2, "0")}:${minuteStr}`;
+
+  const { error } = await admin.from("lesson_bookings").insert({
+    student_id: student.id,
+    coach_id: coachId,
+    scheduled_date: scheduledDate,
+    scheduled_time: scheduledTime,
+    source: "line",
+    line_user_id: lineUserId,
+  });
+
+  if (error) {
+    if (replyToken) await replyMessage(replyToken, `預約失敗:${error.message}`);
+    return;
+  }
+
+  if (replyToken) {
+    await replyMessage(replyToken, `已預約:${student.full_name} ${scheduledDate} ${scheduledTime}`);
   }
 }

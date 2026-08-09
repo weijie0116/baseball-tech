@@ -114,6 +114,20 @@ export type LinePendingContext = {
 
 export type LineVideoRequestStatus = "pending" | "processing" | "done" | "error";
 
+export type LessonBooking = {
+  id: string;
+  student_id: string;
+  coach_id: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  duration_minutes: number;
+  status: "confirmed" | "cancelled";
+  notes: string | null;
+  source: "web" | "line";
+  line_user_id: string | null;
+  created_at: string;
+};
+
 export type LineVideoRequest = {
   id: string;
   line_user_id: string;
@@ -141,6 +155,7 @@ export type Database = {
       session_checkpoint_frames: { Row: SessionCheckpointFrame; Insert: Partial<SessionCheckpointFrame>; Update: Partial<SessionCheckpointFrame> } & NoRelationships;
       line_pending_context: { Row: LinePendingContext; Insert: Partial<LinePendingContext>; Update: Partial<LinePendingContext> } & NoRelationships;
       line_video_requests: { Row: LineVideoRequest; Insert: Partial<LineVideoRequest>; Update: Partial<LineVideoRequest> } & NoRelationships;
+      lesson_bookings: { Row: LessonBooking; Insert: Partial<LessonBooking>; Update: Partial<LessonBooking> } & NoRelationships;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
