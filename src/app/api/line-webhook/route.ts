@@ -60,9 +60,35 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-// "預約 梁維傑 8/15 14:00" — coach books a lesson slot on a student's
-// behalf, sent from the same LINE account used for video submission.
+// "預約 梁維傑 8/15 14:00" / "取消 梁維傑 8/15 14:00" — coach books or
+// cancels a lesson slot on a student's behalf, sent from the same LINE
+// account used for video submission.
 const BOOKING_RE = /^預約\s+(\S+)\s+(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/;
+const CANCEL_RE = /^取消\s+(\S+)\s+(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/;
+
+type StudentLookup =
+  | { ok: true; student: { id: string; full_name: string } }
+  | { ok: false; replyText: string };
+
+async function resolveStudent(
+  admin: ReturnType<typeof createAdminClient>,
+  nameText: string
+): Promise<StudentLookup> {
+  const { data: students } = await admin
+    .from("profiles")
+    .select("id, full_name")
+    .eq("role", "student")
+    .ilike("full_name", `%${nameText}%`);
+
+  if (!students || students.length === 0) {
+    return { ok: false, replyText: `找不到叫「${nameText}」的學員,請確認姓名後再傳一次。` };
+  }
+  if (students.length > 1) {
+    const names = students.map((s) => s.full_name).join("、");
+    return { ok: false, replyText: `找到多位符合的學員(${names}),請傳更完整的姓名。` };
+  }
+  return { ok: true, student: students[0] };
+}
 
 async function handleEvent(admin: ReturnType<typeof createAdminClient>, event: LineEvent) {
   if (event.type !== "message" || !event.source?.userId || !event.message) return;
@@ -72,30 +98,25 @@ async function handleEvent(admin: ReturnType<typeof createAdminClient>, event: L
 
   if (event.message.type === "text" && event.message.text) {
     const text = event.message.text.trim();
-    const bookingMatch = text.match(BOOKING_RE);
 
+    const bookingMatch = text.match(BOOKING_RE);
     if (bookingMatch) {
       await handleBooking(admin, lineUserId, replyToken, bookingMatch);
       return;
     }
 
-    const { data: students } = await admin
-      .from("profiles")
-      .select("id, full_name")
-      .eq("role", "student")
-      .ilike("full_name", `%${text}%`);
-
-    if (!students || students.length === 0) {
-      if (replyToken) await replyMessage(replyToken, `找不到叫「${text}」的學員,請確認姓名後再傳一次。`);
-      return;
-    }
-    if (students.length > 1) {
-      const names = students.map((s) => s.full_name).join("、");
-      if (replyToken) await replyMessage(replyToken, `找到多位符合的學員(${names}),請傳更完整的姓名。`);
+    const cancelMatch = text.match(CANCEL_RE);
+    if (cancelMatch) {
+      await handleCancelBooking(admin, replyToken, cancelMatch);
       return;
     }
 
-    const student = students[0];
+    const lookup = await resolveStudent(admin, text);
+    if (!lookup.ok) {
+      if (replyToken) await replyMessage(replyToken, lookup.replyText);
+      return;
+    }
+    const student = lookup.student;
     await admin
       .from("line_pending_context")
       .upsert({ line_user_id: lineUserId, student_id: student.id, updated_at: new Date().toISOString() });
@@ -166,22 +187,12 @@ async function handleBooking(
 ) {
   const [, nameText, monthStr, dayStr, hourStr, minuteStr] = match;
 
-  const { data: students } = await admin
-    .from("profiles")
-    .select("id, full_name")
-    .eq("role", "student")
-    .ilike("full_name", `%${nameText}%`);
-
-  if (!students || students.length === 0) {
-    if (replyToken) await replyMessage(replyToken, `找不到叫「${nameText}」的學員,請確認姓名後再傳一次。`);
+  const lookup = await resolveStudent(admin, nameText);
+  if (!lookup.ok) {
+    if (replyToken) await replyMessage(replyToken, lookup.replyText);
     return;
   }
-  if (students.length > 1) {
-    const names = students.map((s) => s.full_name).join("、");
-    if (replyToken) await replyMessage(replyToken, `找到多位符合的學員(${names}),請傳更完整的姓名。`);
-    return;
-  }
-  const student = students[0];
+  const student = lookup.student;
 
   const { data: coaches } = await admin.from("profiles").select("id").eq("role", "coach");
   if (!coaches || coaches.length !== 1) {
@@ -216,5 +227,51 @@ async function handleBooking(
 
   if (replyToken) {
     await replyMessage(replyToken, `已預約:${student.full_name} ${scheduledDate} ${scheduledTime}`);
+  }
+}
+
+async function handleCancelBooking(
+  admin: ReturnType<typeof createAdminClient>,
+  replyToken: string | undefined,
+  match: RegExpMatchArray
+) {
+  const [, nameText, monthStr, dayStr, hourStr, minuteStr] = match;
+
+  const lookup = await resolveStudent(admin, nameText);
+  if (!lookup.ok) {
+    if (replyToken) await replyMessage(replyToken, lookup.replyText);
+    return;
+  }
+  const student = lookup.student;
+
+  const scheduledDate = resolveBookingDate(Number(monthStr), Number(dayStr));
+  const scheduledTime = `${hourStr.padStart(2, "0")}:${minuteStr}`;
+
+  const { data: updated, error } = await admin
+    .from("lesson_bookings")
+    .update({ status: "cancelled" })
+    .eq("student_id", student.id)
+    .eq("scheduled_date", scheduledDate)
+    .eq("scheduled_time", scheduledTime)
+    .eq("status", "confirmed")
+    .select("id");
+
+  if (error) {
+    if (replyToken) await replyMessage(replyToken, `取消失敗:${error.message}`);
+    return;
+  }
+
+  if (!updated || updated.length === 0) {
+    if (replyToken) {
+      await replyMessage(
+        replyToken,
+        `找不到「${student.full_name} ${scheduledDate} ${scheduledTime}」這筆預約(可能已經取消或時間不符)。`
+      );
+    }
+    return;
+  }
+
+  if (replyToken) {
+    await replyMessage(replyToken, `已取消:${student.full_name} ${scheduledDate} ${scheduledTime}`);
   }
 }
