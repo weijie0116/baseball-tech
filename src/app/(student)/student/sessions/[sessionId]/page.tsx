@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { pitchTypeLabel } from "@/lib/baseball";
+import { VideoLinksList } from "@/components/VideoLinksList";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -16,7 +17,7 @@ export default async function StudentSessionDetailPage({
   const { sessionId } = await params;
   const supabase = await createClient();
 
-  const [{ data: session }, { data: pitches }] = await Promise.all([
+  const [{ data: session }, { data: pitches }, { data: videos }] = await Promise.all([
     supabase
       .from("training_sessions")
       .select("session_date, location, menu_notes, general_notes")
@@ -27,6 +28,11 @@ export default async function StudentSessionDetailPage({
       .select("id, pitch_number, pitch_type, velocity_kph, spin_rate_rpm, notes")
       .eq("session_id", sessionId)
       .order("pitch_number", { ascending: true }),
+    supabase
+      .from("session_videos")
+      .select("id, storage_path, share_password, file_name")
+      .eq("session_id", sessionId)
+      .order("uploaded_at", { ascending: true }),
   ]);
 
   return (
@@ -84,6 +90,15 @@ export default async function StudentSessionDetailPage({
               )}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>投球影片</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <VideoLinksList videos={videos ?? []} />
         </CardContent>
       </Card>
     </div>

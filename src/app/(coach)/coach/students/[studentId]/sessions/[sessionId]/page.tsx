@@ -3,8 +3,11 @@ import { getCheckpointFramesForSession } from "@/lib/checkpointFrames";
 import { PitchMetricForm } from "./PitchMetricForm";
 import { DeletePitchButton } from "./DeletePitchButton";
 import { CheckpointForm } from "./CheckpointForm";
+import { VideoLinkForm } from "./VideoLinkForm";
+import { DeleteVideoButton } from "./DeleteVideoButton";
 import { pitchTypeLabel } from "@/lib/baseball";
 import { CheckpointFilmstrip } from "@/components/CheckpointFilmstrip";
+import { VideoLinksList } from "@/components/VideoLinksList";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -21,7 +24,7 @@ export default async function CoachSessionDetailPage({
   const { studentId, sessionId } = await params;
   const supabase = await createClient();
 
-  const [{ data: session }, { data: pitches }] = await Promise.all([
+  const [{ data: session }, { data: pitches }, { data: videos }] = await Promise.all([
     supabase
       .from("training_sessions")
       .select(
@@ -34,6 +37,11 @@ export default async function CoachSessionDetailPage({
       .select("id, pitch_number, pitch_type, velocity_kph, spin_rate_rpm, notes")
       .eq("session_id", sessionId)
       .order("pitch_number", { ascending: true }),
+    supabase
+      .from("session_videos")
+      .select("id, storage_path, share_password, file_name")
+      .eq("session_id", sessionId)
+      .order("uploaded_at", { ascending: true }),
   ]);
 
   const checkpointFrames = session?.is_checkpoint
@@ -103,6 +111,25 @@ export default async function CoachSessionDetailPage({
               )}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>投球影片</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-muted-foreground text-sm">
+            影片放在 NAS 上,貼上 Synology QuickConnect 的分享連結(File Station 產生),
+            點開會連到下載頁面(部分影片格式無法直接預覽播放,需下載後用手機/電腦的播放器開啟)。
+          </p>
+          <VideoLinkForm studentId={studentId} sessionId={sessionId} />
+          <VideoLinksList
+            videos={videos ?? []}
+            renderActions={(v) => (
+              <DeleteVideoButton studentId={studentId} sessionId={sessionId} videoId={v.id} />
+            )}
+          />
         </CardContent>
       </Card>
 

@@ -78,7 +78,12 @@ export type SessionVideo = {
   id: string;
   session_id: string;
   storage_location: VideoStorageLocation;
+  // For storage_location "nas": a Synology QuickConnect File Station share
+  // URL (e.g. https://gofile.me/...). The app links out to it rather than
+  // playing inline — HEVC-encoded iPhone videos don't get a browser
+  // preview from Synology's share page, only a download button.
   storage_path: string;
+  share_password: string | null;
   file_name: string | null;
   file_size_bytes: number | null;
   content_type: string | null;

@@ -49,6 +49,52 @@ export async function deletePitchMetricAction(
   revalidatePath(`/coach/students/${studentId}/sessions/${sessionId}`);
 }
 
+export async function addVideoLinkAction(
+  studentId: string,
+  sessionId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const shareUrl = String(formData.get("storage_path") ?? "").trim();
+  const password = String(formData.get("share_password") ?? "").trim();
+  const fileName = String(formData.get("file_name") ?? "").trim();
+
+  if (!shareUrl) {
+    return { error: "請貼上 NAS 分享連結" };
+  }
+  if (!/^https?:\/\//.test(shareUrl)) {
+    return { error: "看起來不是有效的網址" };
+  }
+
+  const { error } = await supabase.from("session_videos").insert({
+    session_id: sessionId,
+    storage_location: "nas",
+    storage_path: shareUrl,
+    share_password: password || null,
+    file_name: fileName || null,
+    uploaded_by: user?.id,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/coach/students/${studentId}/sessions/${sessionId}`);
+  revalidatePath(`/student/sessions/${sessionId}`);
+  return { success: true };
+}
+
+export async function deleteVideoLinkAction(studentId: string, sessionId: string, videoId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("session_videos").delete().eq("id", videoId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/coach/students/${studentId}/sessions/${sessionId}`);
+  revalidatePath(`/student/sessions/${sessionId}`);
+}
+
 export async function setCheckpointAction(
   studentId: string,
   sessionId: string,
