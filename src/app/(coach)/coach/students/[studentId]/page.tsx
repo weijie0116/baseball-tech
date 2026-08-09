@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { StudentProfileForm } from "./StudentProfileForm";
 import { MeasurementForm } from "./MeasurementForm";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -40,7 +42,7 @@ export default async function CoachStudentDetailPage({
   const { studentId } = await params;
   const supabase = await createClient();
 
-  const [{ data: profile }, { data: studentProfile }, { data: measurements }, fastestVelocity] =
+  const [{ data: profile }, { data: studentProfile }, { data: measurements }, fastestVelocity, { data: sessions }] =
     await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", studentId).single(),
       supabase
@@ -54,6 +56,11 @@ export default async function CoachStudentDetailPage({
         .eq("student_id", studentId)
         .order("measured_at", { ascending: false }),
       getFastestVelocity(supabase, studentId),
+      supabase
+        .from("training_sessions")
+        .select("id, session_date, location, menu_notes")
+        .eq("student_id", studentId)
+        .order("session_date", { ascending: false }),
     ]);
 
   return (
@@ -91,6 +98,49 @@ export default async function CoachStudentDetailPage({
               <TableRow>
                 <TableCell colSpan={3} className="text-muted-foreground text-center">
                   尚無紀錄
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-medium">訓練紀錄</h2>
+          <Link
+            href={`/coach/students/${studentId}/sessions/new`}
+            className={buttonVariants({ size: "sm" })}
+          >
+            新增訓練紀錄
+          </Link>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>日期</TableHead>
+              <TableHead>地點</TableHead>
+              <TableHead>訓練菜單</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(sessions ?? []).map((s) => (
+              <TableRow key={s.id}>
+                <TableCell>
+                  <Link href={`/coach/students/${studentId}/sessions/${s.id}`} className="underline">
+                    {s.session_date}
+                  </Link>
+                </TableCell>
+                <TableCell>{s.location ?? "-"}</TableCell>
+                <TableCell className="max-w-xs truncate text-muted-foreground">
+                  {s.menu_notes ?? "-"}
+                </TableCell>
+              </TableRow>
+            ))}
+            {(sessions ?? []).length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3} className="text-muted-foreground text-center">
+                  尚無訓練紀錄
                 </TableCell>
               </TableRow>
             )}

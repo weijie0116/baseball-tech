@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { PitchMetricForm } from "./PitchMetricForm";
+import { DeletePitchButton } from "./DeletePitchButton";
 import { pitchTypeLabel } from "@/lib/baseball";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -10,10 +12,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export default async function StudentSessionDetailPage({
+export default async function CoachSessionDetailPage({
   params,
-}: PageProps<"/student/sessions/[sessionId]">) {
-  const { sessionId } = await params;
+}: PageProps<"/coach/students/[studentId]/sessions/[sessionId]">) {
+  const { studentId, sessionId } = await params;
   const supabase = await createClient();
 
   const [{ data: session }, { data: pitches }] = await Promise.all([
@@ -28,6 +30,8 @@ export default async function StudentSessionDetailPage({
       .eq("session_id", sessionId)
       .order("pitch_number", { ascending: true }),
   ]);
+
+  const nextPitchNumber = (pitches ?? []).reduce((max, p) => Math.max(max, p.pitch_number ?? 0), 0) + 1;
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,7 +58,9 @@ export default async function StudentSessionDetailPage({
         <CardHeader>
           <CardTitle>投球數據</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
+          <PitchMetricForm studentId={studentId} sessionId={sessionId} nextPitchNumber={nextPitchNumber} />
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -63,6 +69,7 @@ export default async function StudentSessionDetailPage({
                 <TableHead>球速 (km/h)</TableHead>
                 <TableHead>轉速 (rpm)</TableHead>
                 <TableHead>備註</TableHead>
+                <TableHead className="text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -73,11 +80,14 @@ export default async function StudentSessionDetailPage({
                   <TableCell>{p.velocity_kph ?? "-"}</TableCell>
                   <TableCell>{p.spin_rate_rpm ?? "-"}</TableCell>
                   <TableCell className="text-muted-foreground">{p.notes ?? "-"}</TableCell>
+                  <TableCell className="text-right">
+                    <DeletePitchButton studentId={studentId} sessionId={sessionId} pitchMetricId={p.id} />
+                  </TableCell>
                 </TableRow>
               ))}
               {(pitches ?? []).length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-muted-foreground text-center">
+                  <TableCell colSpan={6} className="text-muted-foreground text-center">
                     尚無投球數據
                   </TableCell>
                 </TableRow>

@@ -11,6 +11,11 @@ export const PITCH_TYPE_OPTIONS = [
   { value: "other", label: "其他" },
 ] as const;
 
+export function pitchTypeLabel(value: string | null): string {
+  if (!value) return "-";
+  return PITCH_TYPE_OPTIONS.find((pt) => pt.value === value)?.label ?? value;
+}
+
 export const FIELDING_POSITION_OPTIONS = [
   { value: "P", label: "投手" },
   { value: "C", label: "捕手" },
