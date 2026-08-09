@@ -27,6 +27,10 @@ export type StudentProfile = {
   birth_date: string | null;
   dominant_hand: "left" | "right" | null;
   notes: string | null;
+  school: string | null;
+  team: string | null;
+  position: string | null;
+  pitch_types: string[];
   updated_at: string;
 };
 

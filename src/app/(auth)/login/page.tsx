@@ -1,87 +1,12 @@
-"use client";
-
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-
-const loginSchema = z.object({
-  email: z.string().email("請輸入有效的 Email"),
-  password: z.string().min(6, "密碼至少 6 個字元"),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
+import { Suspense } from "react";
+import { LoginForm } from "./LoginForm";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [serverError, setServerError] = useState<string | null>(null);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
-
-  async function onSubmit(values: LoginFormValues) {
-    setServerError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword(values);
-
-    if (error) {
-      setServerError("帳號或密碼錯誤,請再試一次。");
-      return;
-    }
-
-    router.push("/");
-    router.refresh();
-  }
-
   return (
     <main className="flex flex-1 items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>投手成長歷程追蹤</CardTitle>
-          <CardDescription>請用你的帳號密碼登入</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="email" {...register("email")} />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="password">密碼</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                {...register("password")}
-              />
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
-              )}
-            </div>
-            {serverError && <p className="text-sm text-destructive">{serverError}</p>}
-            <Button type="submit" disabled={isSubmitting} className="mt-2">
-              {isSubmitting ? "登入中..." : "登入"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
     </main>
   );
 }

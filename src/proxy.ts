@@ -43,9 +43,16 @@ export async function proxy(request: NextRequest) {
   if (user && pathname.startsWith("/") && !isPublicPath) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_active")
       .eq("id", user.id)
       .single();
+
+    if (profile && !profile.is_active) {
+      await supabase.auth.signOut();
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("deactivated", "1");
+      return NextResponse.redirect(loginUrl);
+    }
 
     const role = profile?.role as UserRole | undefined;
     if (role && !pathBelongsToRole(pathname, role)) {
