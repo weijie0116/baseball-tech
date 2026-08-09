@@ -66,6 +66,17 @@ export async function POST(request: NextRequest) {
 // more than one coach), then date/time.
 const BOOKING_RE = /^預約\s+(\S+)\s+(\S+)\s+(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/;
 const CANCEL_RE = /^取消\s+(\S+)\s+(\S+)\s+(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/;
+const HELP_RE = /^(說明|指令|help|幫助|\?)$/i;
+
+const HELP_TEXT = `可以用的指令:
+・傳學員姓名(例如「梁維傑」)→ 之後傳的影片會歸到這位學員
+・傳影片(要先傳過學員姓名)
+・預約 學員 教練 M/D HH:MM(例如「預約 梁維傑 王教練 8/15 14:00」)
+・取消 學員 教練 M/D HH:MM(例如「取消 梁維傑 王教練 8/15 14:00」)
+・傳「說明」隨時看這則訊息`;
+
+const BOOKING_FORMAT_HINT = "格式:預約 學員 教練 M/D HH:MM(例如「預約 梁維傑 王教練 8/15 14:00」)";
+const CANCEL_FORMAT_HINT = "格式:取消 學員 教練 M/D HH:MM(例如「取消 梁維傑 王教練 8/15 14:00」)";
 
 type ProfileLookup =
   | { ok: true; profile: { id: string; full_name: string } }
@@ -104,9 +115,22 @@ async function handleEvent(admin: ReturnType<typeof createAdminClient>, event: L
   if (event.message.type === "text" && event.message.text) {
     const text = event.message.text.trim();
 
+    if (HELP_RE.test(text)) {
+      if (replyToken) await replyMessage(replyToken, HELP_TEXT);
+      return;
+    }
+
     const bookingMatch = text.match(BOOKING_RE);
     if (bookingMatch) {
       await handleBooking(admin, lineUserId, replyToken, bookingMatch);
+      return;
+    }
+    // Looks like an attempted booking command but didn't match the exact
+    // format (e.g. missing the coach name, wrong date shape) — say so
+    // directly instead of falling through to "student not found", which
+    // would be a confusing error for what's actually a format mistake.
+    if (text.startsWith("預約")) {
+      if (replyToken) await replyMessage(replyToken, BOOKING_FORMAT_HINT);
       return;
     }
 
@@ -115,10 +139,14 @@ async function handleEvent(admin: ReturnType<typeof createAdminClient>, event: L
       await handleCancelBooking(admin, replyToken, cancelMatch);
       return;
     }
+    if (text.startsWith("取消")) {
+      if (replyToken) await replyMessage(replyToken, CANCEL_FORMAT_HINT);
+      return;
+    }
 
     const lookup = await resolveProfileByRole(admin, "student", text);
     if (!lookup.ok) {
-      if (replyToken) await replyMessage(replyToken, lookup.replyText);
+      if (replyToken) await replyMessage(replyToken, `${lookup.replyText}\n\n(傳「說明」可以看所有指令格式)`);
       return;
     }
     const student = lookup.profile;
