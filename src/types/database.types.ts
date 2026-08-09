@@ -106,6 +106,27 @@ export type SessionCheckpointFrame = {
   created_at: string;
 };
 
+export type LinePendingContext = {
+  line_user_id: string;
+  student_id: string;
+  updated_at: string;
+};
+
+export type LineVideoRequestStatus = "pending" | "processing" | "done" | "error";
+
+export type LineVideoRequest = {
+  id: string;
+  line_user_id: string;
+  line_message_id: string;
+  student_id: string | null;
+  student_name_hint: string | null;
+  status: LineVideoRequestStatus;
+  error_message: string | null;
+  training_session_id: string | null;
+  created_at: string;
+  processed_at: string | null;
+};
+
 type NoRelationships = { Relationships: [] };
 
 export type Database = {
@@ -118,6 +139,8 @@ export type Database = {
       pitch_metrics: { Row: PitchMetric; Insert: Partial<PitchMetric>; Update: Partial<PitchMetric> } & NoRelationships;
       session_videos: { Row: SessionVideo; Insert: Partial<SessionVideo>; Update: Partial<SessionVideo> } & NoRelationships;
       session_checkpoint_frames: { Row: SessionCheckpointFrame; Insert: Partial<SessionCheckpointFrame>; Update: Partial<SessionCheckpointFrame> } & NoRelationships;
+      line_pending_context: { Row: LinePendingContext; Insert: Partial<LinePendingContext>; Update: Partial<LinePendingContext> } & NoRelationships;
+      line_video_requests: { Row: LineVideoRequest; Insert: Partial<LineVideoRequest>; Update: Partial<LineVideoRequest> } & NoRelationships;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

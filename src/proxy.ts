@@ -33,7 +33,10 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isPublicPath = pathname === "/login" || pathname === "/";
+  // /api/* routes (e.g. the LINE webhook) are called by external services,
+  // not logged-in browser users — they authenticate themselves (LINE
+  // signature check, etc.) rather than going through Supabase auth here.
+  const isPublicPath = pathname === "/login" || pathname === "/" || pathname.startsWith("/api/");
 
   if (!user && !isPublicPath) {
     const loginUrl = new URL("/login", request.url);
