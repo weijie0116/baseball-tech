@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { replyMessage } from "@/lib/line";
+import type { UserRole } from "@/types/database.types";
 
 // LINE Messaging API webhook. This can only do what a stateless HTTP
 // request allows: verify + log what came in and send a quick reply. Video
@@ -60,34 +61,38 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-// "預約 梁維傑 8/15 14:00" / "取消 梁維傑 8/15 14:00" — coach books or
-// cancels a lesson slot on a student's behalf, sent from the same LINE
-// account used for video submission.
-const BOOKING_RE = /^預約\s+(\S+)\s+(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/;
-const CANCEL_RE = /^取消\s+(\S+)\s+(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/;
+// "預約 梁維傑 王教練 8/15 14:00" / "取消 梁維傑 王教練 8/15 14:00" —
+// student name, then coach name (so the same command works once there's
+// more than one coach), then date/time.
+const BOOKING_RE = /^預約\s+(\S+)\s+(\S+)\s+(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/;
+const CANCEL_RE = /^取消\s+(\S+)\s+(\S+)\s+(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/;
 
-type StudentLookup =
-  | { ok: true; student: { id: string; full_name: string } }
+type ProfileLookup =
+  | { ok: true; profile: { id: string; full_name: string } }
   | { ok: false; replyText: string };
 
-async function resolveStudent(
+const ROLE_LABEL: Record<UserRole, string> = { admin: "管理者", coach: "教練", student: "學員" };
+
+async function resolveProfileByRole(
   admin: ReturnType<typeof createAdminClient>,
+  role: UserRole,
   nameText: string
-): Promise<StudentLookup> {
-  const { data: students } = await admin
+): Promise<ProfileLookup> {
+  const { data: matches } = await admin
     .from("profiles")
     .select("id, full_name")
-    .eq("role", "student")
+    .eq("role", role)
     .ilike("full_name", `%${nameText}%`);
 
-  if (!students || students.length === 0) {
-    return { ok: false, replyText: `找不到叫「${nameText}」的學員,請確認姓名後再傳一次。` };
+  const label = ROLE_LABEL[role];
+  if (!matches || matches.length === 0) {
+    return { ok: false, replyText: `找不到叫「${nameText}」的${label},請確認姓名後再傳一次。` };
   }
-  if (students.length > 1) {
-    const names = students.map((s) => s.full_name).join("、");
-    return { ok: false, replyText: `找到多位符合的學員(${names}),請傳更完整的姓名。` };
+  if (matches.length > 1) {
+    const names = matches.map((m) => m.full_name).join("、");
+    return { ok: false, replyText: `找到多位符合的${label}(${names}),請傳更完整的姓名。` };
   }
-  return { ok: true, student: students[0] };
+  return { ok: true, profile: matches[0] };
 }
 
 async function handleEvent(admin: ReturnType<typeof createAdminClient>, event: LineEvent) {
@@ -111,12 +116,12 @@ async function handleEvent(admin: ReturnType<typeof createAdminClient>, event: L
       return;
     }
 
-    const lookup = await resolveStudent(admin, text);
+    const lookup = await resolveProfileByRole(admin, "student", text);
     if (!lookup.ok) {
       if (replyToken) await replyMessage(replyToken, lookup.replyText);
       return;
     }
-    const student = lookup.student;
+    const student = lookup.profile;
     await admin
       .from("line_pending_context")
       .upsert({ line_user_id: lineUserId, student_id: student.id, updated_at: new Date().toISOString() });
@@ -185,35 +190,27 @@ async function handleBooking(
   replyToken: string | undefined,
   match: RegExpMatchArray
 ) {
-  const [, nameText, monthStr, dayStr, hourStr, minuteStr] = match;
+  const [, studentName, coachName, monthStr, dayStr, hourStr, minuteStr] = match;
 
-  const lookup = await resolveStudent(admin, nameText);
-  if (!lookup.ok) {
-    if (replyToken) await replyMessage(replyToken, lookup.replyText);
+  const studentLookup = await resolveProfileByRole(admin, "student", studentName);
+  if (!studentLookup.ok) {
+    if (replyToken) await replyMessage(replyToken, studentLookup.replyText);
     return;
   }
-  const student = lookup.student;
-
-  const { data: coaches } = await admin.from("profiles").select("id").eq("role", "coach");
-  if (!coaches || coaches.length !== 1) {
-    if (replyToken) {
-      await replyMessage(
-        replyToken,
-        coaches && coaches.length > 1
-          ? "系統裡有多位教練,LINE 預約目前還不支援指定教練,請直接到網站登記。"
-          : "系統裡找不到教練帳號,請直接到網站登記預約。"
-      );
-    }
+  const coachLookup = await resolveProfileByRole(admin, "coach", coachName);
+  if (!coachLookup.ok) {
+    if (replyToken) await replyMessage(replyToken, coachLookup.replyText);
     return;
   }
-  const coachId = coaches[0].id;
+  const student = studentLookup.profile;
+  const coach = coachLookup.profile;
 
   const scheduledDate = resolveBookingDate(Number(monthStr), Number(dayStr));
   const scheduledTime = `${hourStr.padStart(2, "0")}:${minuteStr}`;
 
   const { error } = await admin.from("lesson_bookings").insert({
     student_id: student.id,
-    coach_id: coachId,
+    coach_id: coach.id,
     scheduled_date: scheduledDate,
     scheduled_time: scheduledTime,
     source: "line",
@@ -226,7 +223,10 @@ async function handleBooking(
   }
 
   if (replyToken) {
-    await replyMessage(replyToken, `已預約:${student.full_name} ${scheduledDate} ${scheduledTime}`);
+    await replyMessage(
+      replyToken,
+      `已預約:${student.full_name}(教練:${coach.full_name}) ${scheduledDate} ${scheduledTime}`
+    );
   }
 }
 
@@ -235,14 +235,20 @@ async function handleCancelBooking(
   replyToken: string | undefined,
   match: RegExpMatchArray
 ) {
-  const [, nameText, monthStr, dayStr, hourStr, minuteStr] = match;
+  const [, studentName, coachName, monthStr, dayStr, hourStr, minuteStr] = match;
 
-  const lookup = await resolveStudent(admin, nameText);
-  if (!lookup.ok) {
-    if (replyToken) await replyMessage(replyToken, lookup.replyText);
+  const studentLookup = await resolveProfileByRole(admin, "student", studentName);
+  if (!studentLookup.ok) {
+    if (replyToken) await replyMessage(replyToken, studentLookup.replyText);
     return;
   }
-  const student = lookup.student;
+  const coachLookup = await resolveProfileByRole(admin, "coach", coachName);
+  if (!coachLookup.ok) {
+    if (replyToken) await replyMessage(replyToken, coachLookup.replyText);
+    return;
+  }
+  const student = studentLookup.profile;
+  const coach = coachLookup.profile;
 
   const scheduledDate = resolveBookingDate(Number(monthStr), Number(dayStr));
   const scheduledTime = `${hourStr.padStart(2, "0")}:${minuteStr}`;
@@ -251,6 +257,7 @@ async function handleCancelBooking(
     .from("lesson_bookings")
     .update({ status: "cancelled" })
     .eq("student_id", student.id)
+    .eq("coach_id", coach.id)
     .eq("scheduled_date", scheduledDate)
     .eq("scheduled_time", scheduledTime)
     .eq("status", "confirmed")
@@ -265,13 +272,16 @@ async function handleCancelBooking(
     if (replyToken) {
       await replyMessage(
         replyToken,
-        `找不到「${student.full_name} ${scheduledDate} ${scheduledTime}」這筆預約(可能已經取消或時間不符)。`
+        `找不到「${student.full_name}(教練:${coach.full_name}) ${scheduledDate} ${scheduledTime}」這筆預約(可能已經取消或時間不符)。`
       );
     }
     return;
   }
 
   if (replyToken) {
-    await replyMessage(replyToken, `已取消:${student.full_name} ${scheduledDate} ${scheduledTime}`);
+    await replyMessage(
+      replyToken,
+      `已取消:${student.full_name}(教練:${coach.full_name}) ${scheduledDate} ${scheduledTime}`
+    );
   }
 }
