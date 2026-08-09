@@ -48,3 +48,31 @@ export async function deletePitchMetricAction(
   if (error) throw new Error(error.message);
   revalidatePath(`/coach/students/${studentId}/sessions/${sessionId}`);
 }
+
+export async function setCheckpointAction(
+  studentId: string,
+  sessionId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const supabase = await createClient();
+
+  const isCheckpoint = formData.get("is_checkpoint") === "on";
+  const phaseLabel = String(formData.get("checkpoint_phase_label") ?? "").trim();
+  const analysisNotes = String(formData.get("mechanics_analysis_notes") ?? "").trim();
+
+  const { error } = await supabase
+    .from("training_sessions")
+    .update({
+      is_checkpoint: isCheckpoint,
+      checkpoint_phase_label: phaseLabel || null,
+      mechanics_analysis_notes: analysisNotes || null,
+    })
+    .eq("id", sessionId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/coach/students/${studentId}/sessions/${sessionId}`);
+  revalidatePath("/student/mechanics-timeline");
+  return { success: true };
+}

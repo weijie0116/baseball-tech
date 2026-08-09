@@ -1,7 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCheckpointFramesForSession } from "@/lib/checkpointFrames";
 import { PitchMetricForm } from "./PitchMetricForm";
 import { DeletePitchButton } from "./DeletePitchButton";
+import { CheckpointForm } from "./CheckpointForm";
 import { pitchTypeLabel } from "@/lib/baseball";
+import { CheckpointFilmstrip } from "@/components/CheckpointFilmstrip";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -21,7 +24,9 @@ export default async function CoachSessionDetailPage({
   const [{ data: session }, { data: pitches }] = await Promise.all([
     supabase
       .from("training_sessions")
-      .select("session_date, location, menu_notes, general_notes")
+      .select(
+        "session_date, location, menu_notes, general_notes, is_checkpoint, checkpoint_phase_label, mechanics_analysis_notes"
+      )
       .eq("id", sessionId)
       .single(),
     supabase
@@ -30,6 +35,10 @@ export default async function CoachSessionDetailPage({
       .eq("session_id", sessionId)
       .order("pitch_number", { ascending: true }),
   ]);
+
+  const checkpointFrames = session?.is_checkpoint
+    ? await getCheckpointFramesForSession(supabase, sessionId)
+    : [];
 
   const nextPitchNumber = (pitches ?? []).reduce((max, p) => Math.max(max, p.pitch_number ?? 0), 0) + 1;
 
@@ -94,6 +103,26 @@ export default async function CoachSessionDetailPage({
               )}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>投球機制進步分析</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-muted-foreground text-sm">
+            關鍵畫面截圖由 Claude 從投球影片擷取分析後上傳,這裡只能編輯階段標籤跟分析文字。
+            要處理某次上課的影片,直接跟 Claude 說要分析哪一次的哪支影片。
+          </p>
+          {session?.is_checkpoint && <CheckpointFilmstrip frames={checkpointFrames} />}
+          <CheckpointForm
+            studentId={studentId}
+            sessionId={sessionId}
+            isCheckpoint={session?.is_checkpoint ?? false}
+            phaseLabel={session?.checkpoint_phase_label ?? null}
+            analysisNotes={session?.mechanics_analysis_notes ?? null}
+          />
         </CardContent>
       </Card>
     </div>
