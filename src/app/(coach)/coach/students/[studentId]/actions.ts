@@ -19,6 +19,7 @@ export async function updateStudentProfileAction(
   const school = String(formData.get("school") ?? "").trim();
   const team = String(formData.get("team") ?? "").trim();
   const position = String(formData.get("position") ?? "").trim();
+  const jerseyNumber = String(formData.get("jersey_number") ?? "").trim();
   const pitchTypes = formData.getAll("pitch_types").map(String);
 
   const { error } = await supabase
@@ -30,6 +31,7 @@ export async function updateStudentProfileAction(
       school: school || null,
       team: team || null,
       position: position || null,
+      jersey_number: jerseyNumber || null,
       pitch_types: pitchTypes,
     })
     .eq("student_id", studentId);
@@ -37,6 +39,43 @@ export async function updateStudentProfileAction(
   if (error) return { error: error.message };
 
   revalidatePath(`/coach/students/${studentId}`);
+  revalidatePath("/coach/students");
+  return { success: true };
+}
+
+export async function uploadAvatarAction(
+  studentId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const supabase = await createClient();
+
+  const file = formData.get("avatar");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "請選擇一張照片" };
+  }
+  if (!file.type.startsWith("image/")) {
+    return { error: "請上傳圖片檔案" };
+  }
+
+  const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
+  const storageKey = `${studentId}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(storageKey, file, { upsert: true, contentType: file.type });
+
+  if (uploadError) return { error: `上傳失敗:${uploadError.message}` };
+
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({ avatar_storage_key: storageKey })
+    .eq("id", studentId);
+
+  if (updateError) return { error: updateError.message };
+
+  revalidatePath(`/coach/students/${studentId}`);
+  revalidatePath("/coach/students");
   return { success: true };
 }
 

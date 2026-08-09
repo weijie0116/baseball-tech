@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAvatarUrls } from "@/lib/avatar";
 import { StudentProfileForm } from "./StudentProfileForm";
 import { MeasurementForm } from "./MeasurementForm";
+import { AvatarUploadForm } from "./AvatarUploadForm";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
@@ -44,10 +46,10 @@ export default async function CoachStudentDetailPage({
 
   const [{ data: profile }, { data: studentProfile }, { data: measurements }, fastestVelocity, { data: sessions }] =
     await Promise.all([
-      supabase.from("profiles").select("full_name").eq("id", studentId).single(),
+      supabase.from("profiles").select("full_name, avatar_storage_key").eq("id", studentId).single(),
       supabase
         .from("student_profiles")
-        .select("birth_date, dominant_hand, notes, school, team, position, pitch_types")
+        .select("birth_date, dominant_hand, notes, school, team, position, jersey_number, pitch_types")
         .eq("student_id", studentId)
         .single(),
       supabase
@@ -63,14 +65,22 @@ export default async function CoachStudentDetailPage({
         .order("session_date", { ascending: false }),
     ]);
 
+  const avatarUrls = await getAvatarUrls(supabase, [profile?.avatar_storage_key ?? null]);
+  const avatarUrl = profile?.avatar_storage_key ? avatarUrls[profile.avatar_storage_key] ?? null : null;
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-baseline gap-4">
+      <div className="flex flex-wrap items-baseline gap-4">
         <h1 className="text-xl font-semibold">{profile?.full_name ?? "學員"}</h1>
         <span className="text-sm text-muted-foreground">
           最快球速:{fastestVelocity != null ? `${fastestVelocity} km/h` : "尚無投球數據"}
         </span>
+        <Link href={`/coach/students/${studentId}/mechanics-timeline`} className="text-sm underline">
+          查看投球機制進步分析 →
+        </Link>
       </div>
+
+      <AvatarUploadForm studentId={studentId} avatarUrl={avatarUrl} />
 
       <StudentProfileForm studentId={studentId} studentProfile={studentProfile} />
 

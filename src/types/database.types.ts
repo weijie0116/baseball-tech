@@ -18,6 +18,9 @@ export type Profile = {
   role: UserRole;
   phone: string | null;
   is_active: boolean;
+  // Supabase Storage object key in the "avatars" bucket, e.g. "<id>.jpg".
+  // Null until the coach uploads a photo.
+  avatar_storage_key: string | null;
   created_at: string;
 };
 
@@ -30,6 +33,7 @@ export type StudentProfile = {
   school: string | null;
   team: string | null;
   position: string | null;
+  jersey_number: string | null;
   pitch_types: string[];
   updated_at: string;
 };

@@ -16,7 +16,7 @@ type Props = {
   studentId: string;
   studentProfile: Pick<
     StudentProfile,
-    "birth_date" | "dominant_hand" | "notes" | "school" | "team" | "position" | "pitch_types"
+    "birth_date" | "dominant_hand" | "notes" | "school" | "team" | "position" | "jersey_number" | "pitch_types"
   > | null;
 };
 
@@ -40,6 +40,15 @@ export function StudentProfileForm({ studentId, studentProfile }: Props) {
             <div className="flex flex-col gap-2">
               <Label htmlFor="team">球隊</Label>
               <Input id="team" name="team" defaultValue={studentProfile?.team ?? ""} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="jersey_number">背號</Label>
+              <Input
+                id="jersey_number"
+                name="jersey_number"
+                defaultValue={studentProfile?.jersey_number ?? ""}
+                className="w-24"
+              />
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="position">守備位置</Label>
