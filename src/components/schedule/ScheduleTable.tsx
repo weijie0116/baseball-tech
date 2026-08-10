@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -10,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 
 export type ScheduleRow = {
   id: string;
+  student_id: string;
   scheduled_time: string;
   student_name: string;
   coach_name?: string;
@@ -17,7 +19,16 @@ export type ScheduleRow = {
   source: "web" | "line";
 };
 
-export function ScheduleTable({ rows, showCoach }: { rows: ScheduleRow[]; showCoach?: boolean }) {
+export function ScheduleTable({
+  rows,
+  showCoach,
+  studentLinkBase,
+}: {
+  rows: ScheduleRow[];
+  showCoach?: boolean;
+  /** e.g. "/coach/students" — if given, student names link to `${studentLinkBase}/${student_id}` */
+  studentLinkBase?: string;
+}) {
   return (
     <Table>
       <TableHeader>
@@ -33,7 +44,15 @@ export function ScheduleTable({ rows, showCoach }: { rows: ScheduleRow[]; showCo
         {rows.map((r) => (
           <TableRow key={r.id}>
             <TableCell>{r.scheduled_time.slice(0, 5)}</TableCell>
-            <TableCell>{r.student_name}</TableCell>
+            <TableCell>
+              {studentLinkBase ? (
+                <Link href={`${studentLinkBase}/${r.student_id}`} className="underline">
+                  {r.student_name}
+                </Link>
+              ) : (
+                r.student_name
+              )}
+            </TableCell>
             {showCoach && <TableCell>{r.coach_name}</TableCell>}
             <TableCell>
               <Badge variant={r.status === "confirmed" ? "default" : "outline"}>

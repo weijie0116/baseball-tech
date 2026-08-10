@@ -42,6 +42,7 @@ export default async function AdminSchedulePage({
 
   const rows: ScheduleRow[] = (dayBookings ?? []).map((b) => ({
     id: b.id,
+    student_id: b.student_id,
     scheduled_time: b.scheduled_time,
     student_name: nameById.get(b.student_id) ?? "(未知學員)",
     coach_name: nameById.get(b.coach_id) ?? "(未知教練)",

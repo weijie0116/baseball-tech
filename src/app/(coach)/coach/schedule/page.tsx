@@ -45,6 +45,7 @@ export default async function CoachSchedulePage({
 
   const rows: ScheduleRow[] = (dayBookings ?? []).map((b) => ({
     id: b.id,
+    student_id: b.student_id,
     scheduled_time: b.scheduled_time,
     student_name: nameById.get(b.student_id) ?? "(未知學員)",
     status: b.status,
@@ -61,7 +62,7 @@ export default async function CoachSchedulePage({
       </div>
       <MonthCalendar basePath="/coach/schedule" date={date} countsByDate={countsByDate} />
       <DateNav basePath="/coach/schedule" date={date} />
-      <ScheduleTable rows={rows} />
+      <ScheduleTable rows={rows} studentLinkBase="/coach/students" />
     </div>
   );
 }
