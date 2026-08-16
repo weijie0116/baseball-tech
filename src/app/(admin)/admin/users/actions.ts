@@ -86,3 +86,14 @@ export async function setUserActiveAction(userId: string, isActive: boolean) {
   if (error) throw new Error(error.message);
   revalidatePath("/admin/users");
 }
+
+export async function markNotificationReadAction(notificationId: string) {
+  await assertCallerIsAdmin();
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", notificationId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/users");
+}

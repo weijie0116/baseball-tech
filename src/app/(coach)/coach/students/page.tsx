@@ -3,6 +3,7 @@ import { getAvatarUrls } from "@/lib/avatar";
 import { StudentCard } from "@/components/StudentCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CreateStudentForm } from "./CreateStudentForm";
 
 export default async function CoachStudentsPage({
   searchParams,
@@ -57,6 +58,8 @@ export default async function CoachStudentsPage({
         <h1 className="text-xl font-semibold">我的學員</h1>
         <p className="text-muted-foreground text-sm">點卡片查看/編輯詳細資料。</p>
       </div>
+
+      <CreateStudentForm />
 
       <form className="flex gap-2">
         <Input name="q" placeholder="搜尋學員姓名..." defaultValue={q} className="max-w-xs" />

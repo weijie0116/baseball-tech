@@ -145,6 +145,17 @@ export type LineVideoRequest = {
   processed_at: string | null;
 };
 
+export type Notification = {
+  id: string;
+  recipient_id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link_path: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+
 type NoRelationships = { Relationships: [] };
 
 export type Database = {
@@ -160,6 +171,7 @@ export type Database = {
       line_pending_context: { Row: LinePendingContext; Insert: Partial<LinePendingContext>; Update: Partial<LinePendingContext> } & NoRelationships;
       line_video_requests: { Row: LineVideoRequest; Insert: Partial<LineVideoRequest>; Update: Partial<LineVideoRequest> } & NoRelationships;
       lesson_bookings: { Row: LessonBooking; Insert: Partial<LessonBooking>; Update: Partial<LessonBooking> } & NoRelationships;
+      notifications: { Row: Notification; Insert: Partial<Notification>; Update: Partial<Notification> } & NoRelationships;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
