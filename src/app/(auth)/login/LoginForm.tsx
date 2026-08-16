@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -85,6 +86,12 @@ export function LoginForm() {
           <Button type="submit" disabled={isSubmitting} className="mt-2">
             {isSubmitting ? "登入中..." : "登入"}
           </Button>
+          <Link
+            href="/forgot-password"
+            className="text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            忘記密碼?
+          </Link>
         </form>
       </CardContent>
     </Card>
