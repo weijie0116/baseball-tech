@@ -35,3 +35,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code local settings (personal automation config, not team-shared)
+/.claude/settings.local.json

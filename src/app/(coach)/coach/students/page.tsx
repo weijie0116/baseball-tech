@@ -16,10 +16,21 @@ export default async function CoachStudentsPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: studentProfiles } = await supabase
+  const { data: callerProfile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user!.id)
+    .single();
+  const isAdmin = callerProfile?.role === "admin";
+
+  // Admin browsing this page sees every student (RLS already grants full
+  // access); a coach only sees their own assigned students.
+  const studentProfilesQuery = supabase
     .from("student_profiles")
-    .select("student_id, school, team, position, jersey_number")
-    .eq("coach_id", user!.id);
+    .select("student_id, school, team, position, jersey_number");
+  const { data: studentProfiles } = await (isAdmin
+    ? studentProfilesQuery
+    : studentProfilesQuery.eq("coach_id", user!.id));
 
   const studentIds = (studentProfiles ?? []).map((s) => s.student_id);
   const { data: profiles } = studentIds.length
@@ -55,11 +66,11 @@ export default async function CoachStudentsPage({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-xl font-semibold">我的學員</h1>
+        <h1 className="text-xl font-semibold">{isAdmin ? "所有學員" : "我的學員"}</h1>
         <p className="text-muted-foreground text-sm">點卡片查看/編輯詳細資料。</p>
       </div>
 
-      <CreateStudentForm />
+      {!isAdmin && <CreateStudentForm />}
 
       <form className="flex gap-2">
         <Input name="q" placeholder="搜尋學員姓名..." defaultValue={q} className="max-w-xs" />
@@ -76,7 +87,11 @@ export default async function CoachStudentsPage({
 
       {students.length === 0 && (
         <p className="text-muted-foreground text-center">
-          {q ? `找不到符合「${q}」的學員。` : "目前還沒有指派給你的學員,請管理者指派。"}
+          {q
+            ? `找不到符合「${q}」的學員。`
+            : isAdmin
+              ? "目前系統裡還沒有任何學員帳號。"
+              : "目前還沒有指派給你的學員,請管理者指派。"}
         </p>
       )}
     </div>

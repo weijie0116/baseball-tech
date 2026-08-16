@@ -1,13 +1,30 @@
 import { RoleShell } from "@/components/layout/RoleShell";
+import { createClient } from "@/lib/supabase/server";
 
-export default function CoachLayout({ children }: LayoutProps<"/coach">) {
+export default async function CoachLayout({ children }: LayoutProps<"/coach">) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
+    : { data: null };
+  const isAdmin = profile?.role === "admin";
+
   return (
     <RoleShell
-      title="教練後台"
-      navItems={[
-        { href: "/coach/schedule", label: "今日課表" },
-        { href: "/coach/students", label: "我的學員" },
-      ]}
+      title={isAdmin ? "教練後台(管理者檢視)" : "教練後台"}
+      navItems={
+        isAdmin
+          ? [
+              { href: "/coach/students", label: "所有學員" },
+              { href: "/admin/users", label: "← 回管理後台" },
+            ]
+          : [
+              { href: "/coach/schedule", label: "今日課表" },
+              { href: "/coach/students", label: "我的學員" },
+            ]
+      }
     >
       {children}
     </RoleShell>
