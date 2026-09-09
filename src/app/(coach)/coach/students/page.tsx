@@ -95,7 +95,7 @@ export default async function CoachStudentsPage({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-xl font-semibold">{isAdmin ? "所有學員" : "我的學員"}</h1>
+        <h1 className="font-heading text-xl font-semibold">{isAdmin ? "所有學員" : "我的學員"}</h1>
         <p className="text-muted-foreground text-sm">點卡片查看/編輯詳細資料。</p>
       </div>
 

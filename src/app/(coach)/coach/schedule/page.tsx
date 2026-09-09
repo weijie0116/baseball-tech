@@ -54,15 +54,19 @@ export default async function CoachSchedulePage({
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">課表</h1>
-        <p className="text-muted-foreground text-sm">
-          可以用 LINE 傳「預約 學員姓名 教練姓名 日期 時間」(例如「預約 梁維傑 王教練 8/15 14:00」)登記,取消則把「預約」換成「取消」。
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-xl font-semibold">課表</h1>
+          <p className="text-muted-foreground max-w-md text-sm">
+            可以用 LINE 傳「預約 學員姓名 教練姓名 日期 時間」(例如「預約 梁維傑 王教練 8/15 14:00」)登記,取消則把「預約」換成「取消」。
+          </p>
+        </div>
+        <DateNav basePath="/coach/schedule" date={date} />
       </div>
-      <MonthCalendar basePath="/coach/schedule" date={date} countsByDate={countsByDate} />
-      <DateNav basePath="/coach/schedule" date={date} />
-      <ScheduleTable rows={rows} studentLinkBase="/coach/students" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]">
+        <MonthCalendar basePath="/coach/schedule" date={date} countsByDate={countsByDate} />
+        <ScheduleTable rows={rows} studentLinkBase="/coach/students" />
+      </div>
     </div>
   );
 }

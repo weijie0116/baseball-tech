@@ -28,3 +28,8 @@ export const FIELDING_POSITION_OPTIONS = [
   { value: "RF", label: "右外野手" },
   { value: "DH", label: "指定打擊" },
 ] as const;
+
+export function positionLabel(value: string | null): string {
+  if (!value) return "-";
+  return FIELDING_POSITION_OPTIONS.find((p) => p.value === value)?.label ?? value;
+}

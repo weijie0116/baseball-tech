@@ -10,7 +10,7 @@ export default async function MechanicsTimelinePage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold">投球機制進步分析</h1>
+        <h1 className="font-heading text-xl font-semibold">投球機制進步分析</h1>
         <p className="text-muted-foreground text-sm">依時間排列的代表性檢核點。</p>
       </div>
       <MechanicsTimelineView

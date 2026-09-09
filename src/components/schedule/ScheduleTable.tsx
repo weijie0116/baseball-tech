@@ -1,12 +1,5 @@
 import Link from "next/link";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export type ScheduleRow = {
@@ -30,48 +23,53 @@ export function ScheduleTable({
   studentLinkBase?: string;
 }) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>時間</TableHead>
-          <TableHead>學員</TableHead>
-          {showCoach && <TableHead>教練</TableHead>}
-          <TableHead>狀態</TableHead>
-          <TableHead>來源</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((r) => (
-          <TableRow key={r.id}>
-            <TableCell>{r.scheduled_time.slice(0, 5)}</TableCell>
-            <TableCell>
-              {studentLinkBase ? (
-                <Link href={`${studentLinkBase}/${r.student_id}`} className="underline">
-                  {r.student_name}
-                </Link>
-              ) : (
-                r.student_name
-              )}
-            </TableCell>
-            {showCoach && <TableCell>{r.coach_name}</TableCell>}
-            <TableCell>
+    <Card>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="font-heading text-base font-semibold">今天 {rows.length} 堂課</span>
+        </div>
+        <div className="flex flex-col">
+          {rows.map((r) => (
+            <div
+              key={r.id}
+              className="flex items-center gap-4 border-b py-3 last:border-b-0"
+            >
+              <span className="font-numeric w-14 shrink-0 text-lg font-bold tabular-nums">
+                {r.scheduled_time.slice(0, 5)}
+              </span>
+              <span
+                className={
+                  "h-8 w-0.5 shrink-0 rounded-full " +
+                  (r.status === "confirmed" ? "bg-primary" : "bg-border")
+                }
+              />
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">
+                  {studentLinkBase ? (
+                    <Link href={`${studentLinkBase}/${r.student_id}`} className="hover:underline">
+                      {r.student_name}
+                    </Link>
+                  ) : (
+                    r.student_name
+                  )}
+                </div>
+                {showCoach && (
+                  <div className="truncate text-xs text-muted-foreground">教練:{r.coach_name}</div>
+                )}
+              </div>
               <Badge variant={r.status === "confirmed" ? "default" : "outline"}>
                 {r.status === "confirmed" ? "已確認" : "已取消"}
               </Badge>
-            </TableCell>
-            <TableCell className="text-muted-foreground text-sm">
-              {r.source === "line" ? "LINE" : "網站"}
-            </TableCell>
-          </TableRow>
-        ))}
-        {rows.length === 0 && (
-          <TableRow>
-            <TableCell colSpan={showCoach ? 5 : 4} className="text-muted-foreground text-center">
-              這天沒有排課。
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+              <span className="w-10 shrink-0 text-right text-xs text-muted-foreground">
+                {r.source === "line" ? "LINE" : "網站"}
+              </span>
+            </div>
+          ))}
+          {rows.length === 0 && (
+            <p className="text-muted-foreground py-6 text-center text-sm">這天沒有排課。</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

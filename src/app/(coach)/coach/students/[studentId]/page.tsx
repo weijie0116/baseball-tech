@@ -6,6 +6,7 @@ import { MeasurementForm } from "./MeasurementForm";
 import { AvatarUploadForm } from "./AvatarUploadForm";
 import { buttonVariants } from "@/components/ui/button";
 import { StatCard } from "@/components/StatCard";
+import { StudentRail } from "./StudentRail";
 import {
   Table,
   TableBody,
@@ -82,7 +83,10 @@ export default async function CoachStudentDetailPage({
   const latestMeasurement = measurements?.[0];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex gap-6">
+      <StudentRail activeStudentId={studentId} />
+
+      <div className="flex min-w-0 flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-baseline gap-4">
         <h1 className="font-heading text-xl font-semibold">{profile?.full_name ?? "學員"}</h1>
         <Link href={`/coach/students/${studentId}/mechanics-timeline`} className="text-sm underline">
@@ -187,6 +191,7 @@ export default async function CoachStudentDetailPage({
             )}
           </TableBody>
         </Table>
+      </div>
       </div>
     </div>
   );

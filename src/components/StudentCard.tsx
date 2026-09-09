@@ -2,12 +2,7 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FIELDING_POSITION_OPTIONS } from "@/lib/baseball";
-
-function positionLabel(value: string | null): string {
-  if (!value) return "-";
-  return FIELDING_POSITION_OPTIONS.find((p) => p.value === value)?.label ?? value;
-}
+import { positionLabel } from "@/lib/baseball";
 
 export type StudentCardData = {
   id: string;

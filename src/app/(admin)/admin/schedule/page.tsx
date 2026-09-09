@@ -52,10 +52,14 @@ export default async function AdminSchedulePage({
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">全部課表</h1>
-      <MonthCalendar basePath="/admin/schedule" date={date} countsByDate={countsByDate} />
-      <DateNav basePath="/admin/schedule" date={date} />
-      <ScheduleTable rows={rows} showCoach />
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h1 className="font-heading text-xl font-semibold">全部課表</h1>
+        <DateNav basePath="/admin/schedule" date={date} />
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]">
+        <MonthCalendar basePath="/admin/schedule" date={date} countsByDate={countsByDate} />
+        <ScheduleTable rows={rows} showCoach />
+      </div>
     </div>
   );
 }
