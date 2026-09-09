@@ -5,6 +5,7 @@ import { StudentProfileForm } from "./StudentProfileForm";
 import { MeasurementForm } from "./MeasurementForm";
 import { AvatarUploadForm } from "./AvatarUploadForm";
 import { buttonVariants } from "@/components/ui/button";
+import { StatCard } from "@/components/StatCard";
 import {
   Table,
   TableBody,
@@ -14,28 +15,34 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-async function getFastestVelocity(
+async function getSessionIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
   studentId: string
-): Promise<number | null> {
+): Promise<string[]> {
   const { data: sessions } = await supabase
     .from("training_sessions")
     .select("id")
     .eq("student_id", studentId);
+  return (sessions ?? []).map((s) => s.id);
+}
 
-  const sessionIds = (sessions ?? []).map((s) => s.id);
+async function getBestPitchMetric(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionIds: string[],
+  column: "velocity_kph" | "spin_rate_rpm"
+): Promise<number | null> {
   if (sessionIds.length === 0) return null;
 
-  const { data: fastest } = await supabase
+  const { data: best } = await supabase
     .from("pitch_metrics")
-    .select("velocity_kph")
+    .select(column)
     .in("session_id", sessionIds)
-    .not("velocity_kph", "is", null)
-    .order("velocity_kph", { ascending: false })
+    .not(column, "is", null)
+    .order(column, { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  return fastest?.velocity_kph ?? null;
+  return (best as Record<string, number | null> | null)?.[column] ?? null;
 }
 
 export default async function CoachStudentDetailPage({
@@ -44,7 +51,7 @@ export default async function CoachStudentDetailPage({
   const { studentId } = await params;
   const supabase = await createClient();
 
-  const [{ data: profile }, { data: studentProfile }, { data: measurements }, fastestVelocity, { data: sessions }] =
+  const [{ data: profile }, { data: studentProfile }, { data: measurements }, { data: sessions }] =
     await Promise.all([
       supabase.from("profiles").select("full_name, avatar_storage_key").eq("id", studentId).single(),
       supabase
@@ -57,7 +64,6 @@ export default async function CoachStudentDetailPage({
         .select("id, measured_at, height_cm, weight_kg")
         .eq("student_id", studentId)
         .order("measured_at", { ascending: false }),
-      getFastestVelocity(supabase, studentId),
       supabase
         .from("training_sessions")
         .select("id, session_date, location, menu_notes")
@@ -65,19 +71,44 @@ export default async function CoachStudentDetailPage({
         .order("session_date", { ascending: false }),
     ]);
 
+  const sessionIds = await getSessionIds(supabase, studentId);
+  const [fastestVelocity, fastestSpinRate] = await Promise.all([
+    getBestPitchMetric(supabase, sessionIds, "velocity_kph"),
+    getBestPitchMetric(supabase, sessionIds, "spin_rate_rpm"),
+  ]);
+
   const avatarUrls = await getAvatarUrls(supabase, [profile?.avatar_storage_key ?? null]);
   const avatarUrl = profile?.avatar_storage_key ? avatarUrls[profile.avatar_storage_key] ?? null : null;
+  const latestMeasurement = measurements?.[0];
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-baseline gap-4">
-        <h1 className="text-xl font-semibold">{profile?.full_name ?? "學員"}</h1>
-        <span className="text-sm text-muted-foreground">
-          最快球速:{fastestVelocity != null ? `${fastestVelocity} km/h` : "尚無投球數據"}
-        </span>
+        <h1 className="font-heading text-xl font-semibold">{profile?.full_name ?? "學員"}</h1>
         <Link href={`/coach/students/${studentId}/mechanics-timeline`} className="text-sm underline">
           查看投球機制進步分析 →
         </Link>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard
+          label="最快球速"
+          value={fastestVelocity != null ? String(fastestVelocity) : "-"}
+          unit="km/h"
+          primary
+        />
+        <StatCard
+          label="最高轉速"
+          value={fastestSpinRate != null ? String(fastestSpinRate) : "-"}
+          unit="rpm"
+        />
+        <StatCard
+          label="身高 / 體重"
+          value={latestMeasurement?.height_cm != null ? String(latestMeasurement.height_cm) : "-"}
+          unit={latestMeasurement?.weight_kg != null ? `cm · ${latestMeasurement.weight_kg} kg` : "cm"}
+          subtext={latestMeasurement ? `${latestMeasurement.measured_at} 量測` : undefined}
+        />
+        <StatCard label="累計上課" value={String((sessions ?? []).length)} unit="次" />
       </div>
 
       <AvatarUploadForm studentId={studentId} avatarUrl={avatarUrl} />
@@ -87,7 +118,7 @@ export default async function CoachStudentDetailPage({
       <MeasurementForm studentId={studentId} />
 
       <div>
-        <h2 className="mb-2 font-medium">身高體重歷史</h2>
+        <h2 className="font-heading mb-2 font-medium">身高體重歷史</h2>
         <Table>
           <TableHeader>
             <TableRow>
@@ -99,9 +130,9 @@ export default async function CoachStudentDetailPage({
           <TableBody>
             {(measurements ?? []).map((m) => (
               <TableRow key={m.id}>
-                <TableCell>{m.measured_at}</TableCell>
-                <TableCell>{m.height_cm ?? "-"}</TableCell>
-                <TableCell>{m.weight_kg ?? "-"}</TableCell>
+                <TableCell className="font-numeric tabular-nums">{m.measured_at}</TableCell>
+                <TableCell className="font-numeric tabular-nums">{m.height_cm ?? "-"}</TableCell>
+                <TableCell className="font-numeric tabular-nums">{m.weight_kg ?? "-"}</TableCell>
               </TableRow>
             ))}
             {(measurements ?? []).length === 0 && (
@@ -117,7 +148,7 @@ export default async function CoachStudentDetailPage({
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-medium">訓練紀錄</h2>
+          <h2 className="font-heading font-medium">訓練紀錄</h2>
           <Link
             href={`/coach/students/${studentId}/sessions/new`}
             className={buttonVariants({ size: "sm" })}
@@ -136,7 +167,7 @@ export default async function CoachStudentDetailPage({
           <TableBody>
             {(sessions ?? []).map((s) => (
               <TableRow key={s.id}>
-                <TableCell>
+                <TableCell className="font-numeric tabular-nums">
                   <Link href={`/coach/students/${studentId}/sessions/${s.id}`} className="underline">
                     {s.session_date}
                   </Link>

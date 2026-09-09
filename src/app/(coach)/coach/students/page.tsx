@@ -46,6 +46,34 @@ export default async function CoachStudentsPage({
     (profiles ?? []).map((p) => p.avatar_storage_key)
   );
 
+  // Batch-compute each student's fastest recorded velocity for the roster
+  // card footer (mirrors the single-student query in the detail page, but
+  // done once for the whole list instead of N+1 queries).
+  const fastestVelocityByStudent = new Map<string, number>();
+  if (studentIds.length) {
+    const { data: sessions } = await supabase
+      .from("training_sessions")
+      .select("id, student_id")
+      .in("student_id", studentIds);
+    const studentIdBySession = new Map((sessions ?? []).map((s) => [s.id, s.student_id]));
+    const sessionIds = (sessions ?? []).map((s) => s.id);
+    if (sessionIds.length) {
+      const { data: pitches } = await supabase
+        .from("pitch_metrics")
+        .select("session_id, velocity_kph")
+        .in("session_id", sessionIds)
+        .not("velocity_kph", "is", null);
+      for (const p of pitches ?? []) {
+        const studentId = studentIdBySession.get(p.session_id);
+        if (!studentId || p.velocity_kph == null) continue;
+        const current = fastestVelocityByStudent.get(studentId);
+        if (current == null || p.velocity_kph > current) {
+          fastestVelocityByStudent.set(studentId, p.velocity_kph);
+        }
+      }
+    }
+  }
+
   const filteredQuery = q.toLowerCase();
   const students = (studentProfiles ?? [])
     .map((sp) => {
@@ -58,6 +86,7 @@ export default async function CoachStudentsPage({
         team: sp.team,
         position: sp.position,
         jersey_number: sp.jersey_number,
+        fastest_velocity_kph: fastestVelocityByStudent.get(sp.student_id) ?? null,
       };
     })
     .filter((s) => !filteredQuery || s.full_name.toLowerCase().includes(filteredQuery))

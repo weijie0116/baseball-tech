@@ -34,7 +34,7 @@ export function GrowthChart({
           type="monotone"
           dataKey="height_cm"
           name="身高 (cm)"
-          stroke="var(--chart-1, #2563eb)"
+          stroke="var(--chart-3, #2563eb)"
           connectNulls
         />
         <Line

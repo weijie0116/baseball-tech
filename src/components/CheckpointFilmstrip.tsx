@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import { Badge } from "@/components/ui/badge";
 
 export type CheckpointFrameDisplay = {
   id: string;
@@ -25,9 +26,13 @@ export function CheckpointFilmstrip({ frames }: { frames: CheckpointFrameDisplay
               <img src={f.url} alt={f.phase_guess ?? "投球動作截圖"} className="block w-full h-auto" />
             )}
           </div>
-          <figcaption className="text-center text-sm text-muted-foreground">
+          <figcaption className="flex items-center justify-center gap-1.5 text-center text-sm text-muted-foreground">
             {f.phase_guess ?? "-"}
-            {!f.confirmed_by_coach && <span className="ml-1 text-amber-600">AI建議</span>}
+            {!f.confirmed_by_coach && (
+              <Badge variant="outline" className="border-transparent bg-accent text-accent-foreground">
+                AI 建議
+              </Badge>
+            )}
           </figcaption>
         </figure>
       ))}
