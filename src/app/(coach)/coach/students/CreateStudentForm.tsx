@@ -15,8 +15,8 @@ export function CreateStudentForm() {
 
   if (!open) {
     return (
-      <Button variant="outline" size="sm" className="w-fit" onClick={() => setOpen(true)}>
-        新增學員
+      <Button size="sm" className="shrink-0" onClick={() => setOpen(true)}>
+        ＋ 新增學員
       </Button>
     );
   }

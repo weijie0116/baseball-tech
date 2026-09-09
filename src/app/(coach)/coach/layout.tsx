@@ -7,13 +7,14 @@ export default async function CoachLayout({ children }: LayoutProps<"/coach">) {
     data: { user },
   } = await supabase.auth.getUser();
   const { data: profile } = user
-    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
+    ? await supabase.from("profiles").select("role, full_name").eq("id", user.id).single()
     : { data: null };
   const isAdmin = profile?.role === "admin";
 
   return (
     <RoleShell
       title={isAdmin ? "教練後台(管理者檢視)" : "教練後台"}
+      userName={profile?.full_name ?? undefined}
       navItems={
         isAdmin
           ? [

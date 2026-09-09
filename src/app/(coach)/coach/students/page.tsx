@@ -1,15 +1,18 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAvatarUrls } from "@/lib/avatar";
 import { StudentCard } from "@/components/StudentCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { CreateStudentForm } from "./CreateStudentForm";
 
 export default async function CoachStudentsPage({
   searchParams,
 }: PageProps<"/coach/students">) {
-  const { q: qParam } = await searchParams;
+  const { q: qParam, pos: posParam } = await searchParams;
   const q = typeof qParam === "string" ? qParam.trim() : "";
+  const pos = typeof posParam === "string" ? posParam : "all";
 
   const supabase = await createClient();
   const {
@@ -75,7 +78,7 @@ export default async function CoachStudentsPage({
   }
 
   const filteredQuery = q.toLowerCase();
-  const students = (studentProfiles ?? [])
+  const allStudents = (studentProfiles ?? [])
     .map((sp) => {
       const profile = profileById.get(sp.student_id);
       return {
@@ -92,30 +95,78 @@ export default async function CoachStudentsPage({
     .filter((s) => !filteredQuery || s.full_name.toLowerCase().includes(filteredQuery))
     .sort((a, b) => a.full_name.localeCompare(b.full_name, "zh-Hant"));
 
+  const pitcherCount = allStudents.filter((s) => s.position === "P").length;
+  const fielderCount = allStudents.length - pitcherCount;
+  const students = allStudents.filter((s) =>
+    pos === "all" ? true : pos === "P" ? s.position === "P" : s.position !== "P"
+  );
+
+  const filters = [
+    { key: "all", label: "全部", count: allStudents.length },
+    { key: "P", label: "投手", count: pitcherCount },
+    { key: "F", label: "野手", count: fielderCount },
+  ];
+
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="font-heading text-xl font-semibold">{isAdmin ? "所有學員" : "我的學員"}</h1>
-        <p className="text-muted-foreground text-sm">點卡片查看/編輯詳細資料。</p>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">
+            {isAdmin ? "所有學員" : "我的學員"}
+          </h1>
+          <p className="text-muted-foreground pt-1 text-sm">點卡片查看或編輯詳細資料。</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <form className="flex gap-2">
+            {pos !== "all" && <input type="hidden" name="pos" value={pos} />}
+            <Input
+              name="q"
+              placeholder="搜尋學員姓名…"
+              defaultValue={q}
+              className="w-[200px]"
+            />
+            <Button type="submit" variant="outline" size="sm">
+              搜尋
+            </Button>
+          </form>
+          {!isAdmin && <CreateStudentForm />}
+        </div>
       </div>
 
-      {!isAdmin && <CreateStudentForm />}
+      <div className="flex flex-wrap gap-2 text-sm">
+        {filters.map((f) => {
+          const isActive = pos === f.key;
+          const params = new URLSearchParams();
+          if (q) params.set("q", q);
+          if (f.key !== "all") params.set("pos", f.key);
+          const href = params.toString()
+            ? `/coach/students?${params.toString()}`
+            : "/coach/students";
+          return (
+            <Link
+              key={f.key}
+              href={href}
+              className={cn(
+                "rounded-full px-3 py-1.5 transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground border hover:border-primary"
+              )}
+            >
+              {f.label} {f.count}
+            </Link>
+          );
+        })}
+      </div>
 
-      <form className="flex gap-2">
-        <Input name="q" placeholder="搜尋學員姓名..." defaultValue={q} className="max-w-xs" />
-        <Button type="submit" variant="outline" size="sm">
-          搜尋
-        </Button>
-      </form>
-
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
         {students.map((s) => (
           <StudentCard key={s.id} student={s} href={`/coach/students/${s.id}`} />
         ))}
       </div>
 
       {students.length === 0 && (
-        <p className="text-muted-foreground text-center">
+        <p className="text-muted-foreground py-8 text-center">
           {q
             ? `找不到符合「${q}」的學員。`
             : isAdmin
