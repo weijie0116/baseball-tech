@@ -1,9 +1,8 @@
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAvatarUrls } from "@/lib/avatar";
-import { positionLabel } from "@/lib/baseball";
-import { cn } from "@/lib/utils";
+import { StudentRailList } from "./StudentRailList";
+import { CreateStudentForm } from "../CreateStudentForm";
 
 async function getRoster(supabase: Awaited<ReturnType<typeof createClient>>, isAdmin: boolean, coachId: string) {
   const studentProfilesQuery = supabase
@@ -76,51 +75,17 @@ export async function StudentRail({ activeStudentId }: { activeStudentId: string
         <span className="text-sm font-semibold">{isAdmin ? "所有學員" : "我的學員"}</span>
         <span className="text-xs text-muted-foreground">{roster.length} 位</span>
       </div>
-      <div className="flex flex-col gap-1">
-        {roster.map((s) => {
-          const isActive = s.id === activeStudentId;
-          return (
-            <Link
-              key={s.id}
-              href={`/coach/students/${s.id}`}
-              className={cn(
-                "flex items-center gap-2.5 rounded-lg p-2 text-sm",
-                isActive ? "bg-accent" : "hover:bg-muted"
-              )}
-            >
-              <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-[10px] text-muted-foreground">
-                {s.avatar_url ? (
-                  <img src={s.avatar_url} alt="" className="size-full object-cover" />
-                ) : (
-                  "照片"
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className={cn("truncate", isActive ? "font-semibold text-accent-foreground" : "font-normal")}>
-                  {s.full_name}
-                </div>
-                <div className="truncate text-xs text-muted-foreground">
-                  {[positionLabel(s.position), s.jersey_number ? `#${s.jersey_number}` : null]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </div>
-              </div>
-              <span className="font-numeric shrink-0 text-sm font-semibold tabular-nums text-muted-foreground">
-                {s.fastest_velocity_kph ?? "-"}
-              </span>
-            </Link>
-          );
-        })}
-        {roster.length === 0 && (
-          <p className="text-muted-foreground p-2 text-xs">目前還沒有學員。</p>
-        )}
-      </div>
-      <Link
-        href="/coach/students"
-        className="rounded-lg border border-dashed p-2.5 text-center text-xs text-primary hover:bg-muted"
-      >
-        查看完整清單 →
-      </Link>
+      <StudentRailList roster={roster} activeStudentId={activeStudentId} />
+      {isAdmin ? (
+        <Link
+          href="/coach/students"
+          className="rounded-lg border border-dashed p-2.5 text-center text-xs text-primary hover:bg-muted"
+        >
+          查看完整清單 →
+        </Link>
+      ) : (
+        <CreateStudentForm />
+      )}
     </aside>
   );
 }

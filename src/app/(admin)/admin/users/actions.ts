@@ -79,6 +79,21 @@ export async function createUserAction(
   return { success: true };
 }
 
+export type ResetPasswordState = { success?: boolean; error?: string };
+
+export async function resetPasswordAction(
+  userId: string,
+  password: string
+): Promise<ResetPasswordState> {
+  await assertCallerIsAdmin();
+  if (password.length < 6) return { error: "密碼至少 6 個字元" };
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(userId, { password });
+  if (error) return { error: `重設密碼失敗:${error.message}` };
+  return { success: true };
+}
+
 export async function setUserActiveAction(userId: string, isActive: boolean) {
   await assertCallerIsAdmin();
   const admin = createAdminClient();

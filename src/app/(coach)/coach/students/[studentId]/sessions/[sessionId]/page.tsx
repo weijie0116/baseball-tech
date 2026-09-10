@@ -5,11 +5,12 @@ import { DeletePitchButton } from "./DeletePitchButton";
 import { CheckpointForm } from "./CheckpointForm";
 import { VideoLinkForm } from "./VideoLinkForm";
 import { DeleteVideoButton } from "./DeleteVideoButton";
-import { pitchTypeLabel } from "@/lib/baseball";
+import { pitchTypeLabel, pitchTypeBadgeClassName } from "@/lib/baseball";
 import { CheckpointFilmstrip } from "@/components/CheckpointFilmstrip";
 import { VideoLinksList } from "@/components/VideoLinksList";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/StatCard";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -130,7 +131,11 @@ export default async function CoachSessionDetailPage({
                   <TableCell className="font-numeric tabular-nums text-muted-foreground">
                     {p.pitch_number ?? "-"}
                   </TableCell>
-                  <TableCell>{pitchTypeLabel(p.pitch_type)}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={pitchTypeBadgeClassName(p.pitch_type)}>
+                      {pitchTypeLabel(p.pitch_type)}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="font-numeric font-bold tabular-nums">
                     {p.velocity_kph ?? "-"}
                   </TableCell>

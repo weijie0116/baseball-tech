@@ -16,6 +16,14 @@ export function pitchTypeLabel(value: string | null): string {
   return PITCH_TYPE_OPTIONS.find((pt) => pt.value === value)?.label ?? value;
 }
 
+// Fastball reads as the "primary" pitch (accent/green pill); every breaking
+// or off-speed pitch shares a second color (amber, reusing --chart-2) so the
+// distinction reads at a glance in pitch-by-pitch tables.
+export function pitchTypeBadgeClassName(value: string | null): string {
+  if (value === "fastball") return "border-transparent bg-accent text-accent-foreground";
+  return "border-transparent bg-[color-mix(in_oklch,var(--chart-2)_18%,transparent)] text-[color:var(--chart-2)]";
+}
+
 export const FIELDING_POSITION_OPTIONS = [
   { value: "P", label: "投手" },
   { value: "C", label: "捕手" },
@@ -32,4 +40,10 @@ export const FIELDING_POSITION_OPTIONS = [
 export function positionLabel(value: string | null): string {
   if (!value) return "-";
   return FIELDING_POSITION_OPTIONS.find((p) => p.value === value)?.label ?? value;
+}
+
+export function dominantHandLabel(value: "left" | "right" | null): string {
+  if (value === "left") return "左投";
+  if (value === "right") return "右投";
+  return "";
 }

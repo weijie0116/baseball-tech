@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { CreateUserForm } from "./CreateUserForm";
 import { ToggleActiveButton } from "./ToggleActiveButton";
+import { ResetPasswordButton } from "./ResetPasswordButton";
 import { NotificationsList } from "./NotificationsList";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -43,7 +44,8 @@ export default async function AdminUsersPage() {
       <div>
         <h1 className="font-heading text-xl font-semibold">帳號管理</h1>
         <p className="text-muted-foreground text-sm">
-          建立教練/學員帳號、停用不再使用的帳號。
+          建立教練/學員帳號、停用不再使用的帳號。有人忘記密碼時,直接在下面對他的帳號按「重設密碼」,
+          自己打一組新密碼告知本人,不需要走 email 重設信那套流程。
         </p>
       </div>
 
@@ -75,7 +77,10 @@ export default async function AdminUsersPage() {
                 {new Date(p.created_at).toLocaleDateString("zh-TW")}
               </TableCell>
               <TableCell className="text-right">
-                <ToggleActiveButton userId={p.id} isActive={p.is_active} />
+                <div className="flex justify-end gap-2">
+                  <ResetPasswordButton userId={p.id} fullName={p.full_name} />
+                  <ToggleActiveButton userId={p.id} isActive={p.is_active} />
+                </div>
               </TableCell>
             </TableRow>
           ))}

@@ -1,17 +1,9 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { todayISODate, formatDateLabel } from "@/lib/date";
 import { GrowthChart } from "@/components/charts/GrowthChart";
 import { VelocityTrendChart } from "@/components/charts/VelocityTrendChart";
+import { SessionListRow } from "@/components/SessionListRow";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 export default async function StudentDashboardPage() {
   const supabase = await createClient();
@@ -82,6 +74,12 @@ export default async function StudentDashboardPage() {
     weight_kg: m.weight_kg,
   }));
 
+  const fastestVelocityBySession = new Map<string, number>();
+  for (const [sessionId, rows] of velocityBySession) {
+    const velocities = rows.map((r) => r.velocity_kph).filter((v): v is number => v != null);
+    if (velocities.length) fastestVelocityBySession.set(sessionId, Math.max(...velocities));
+  }
+
   const allVelocities = (pitches ?? []).map((p) => p.velocity_kph).filter((v): v is number => v != null);
   const allSpins = (pitches ?? []).map((p) => p.spin_rate_rpm).filter((v): v is number => v != null);
   const fastestVelocity = allVelocities.length ? Math.max(...allVelocities) : null;
@@ -145,37 +143,21 @@ export default async function StudentDashboardPage() {
 
       <div>
         <h2 className="font-heading mb-2 font-medium">訓練紀錄</h2>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>日期</TableHead>
-              <TableHead>地點</TableHead>
-              <TableHead>訓練菜單</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(sessions ?? []).map((s) => (
-              <TableRow key={s.id}>
-                <TableCell className="font-numeric tabular-nums">
-                  <Link href={`/student/sessions/${s.id}`} className="underline">
-                    {s.session_date}
-                  </Link>
-                </TableCell>
-                <TableCell>{s.location ?? "-"}</TableCell>
-                <TableCell className="max-w-xs truncate text-muted-foreground">
-                  {s.menu_notes ?? "-"}
-                </TableCell>
-              </TableRow>
-            ))}
-            {(sessions ?? []).length === 0 && (
-              <TableRow>
-                <TableCell colSpan={3} className="text-muted-foreground text-center">
-                  尚無訓練紀錄
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <div className="flex flex-col gap-2">
+          {(sessions ?? []).map((s) => (
+            <SessionListRow
+              key={s.id}
+              href={`/student/sessions/${s.id}`}
+              date={s.session_date}
+              menu={s.menu_notes}
+              place={s.location}
+              veloKph={fastestVelocityBySession.get(s.id) ?? null}
+            />
+          ))}
+          {(sessions ?? []).length === 0 && (
+            <p className="text-muted-foreground py-6 text-center text-sm">尚無訓練紀錄</p>
+          )}
+        </div>
       </div>
     </div>
   );
