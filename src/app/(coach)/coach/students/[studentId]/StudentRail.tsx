@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import type { createClient } from "@/lib/supabase/server";
+import { getCurrentUserProfile } from "@/lib/supabase/currentUser";
 import { getAvatarUrls } from "@/lib/avatar";
 import { StudentRailList } from "./StudentRailList";
 import { CreateStudentForm } from "../CreateStudentForm";
@@ -56,15 +57,7 @@ async function getRoster(supabase: Awaited<ReturnType<typeof createClient>>, isA
 }
 
 export async function StudentRail({ activeStudentId }: { activeStudentId: string }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: callerProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user!.id)
-    .single();
+  const { supabase, user, profile: callerProfile } = await getCurrentUserProfile();
   const isAdmin = callerProfile?.role === "admin";
 
   const roster = await getRoster(supabase, isAdmin, user!.id);

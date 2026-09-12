@@ -1,11 +1,46 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import type { createClient } from "@/lib/supabase/server";
+import { getCurrentUserProfile } from "@/lib/supabase/currentUser";
 import { getAvatarUrls } from "@/lib/avatar";
 import { StudentCard } from "@/components/StudentCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CreateStudentForm } from "./CreateStudentForm";
+
+// Batch-computes each student's fastest recorded velocity for the roster
+// card footer (mirrors the single-student query in the detail page, but
+// done once for the whole list instead of N+1 queries).
+async function getFastestVelocityByStudent(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  studentIds: string[]
+): Promise<Map<string, number>> {
+  const fastestVelocityByStudent = new Map<string, number>();
+  if (studentIds.length === 0) return fastestVelocityByStudent;
+
+  const { data: sessions } = await supabase
+    .from("training_sessions")
+    .select("id, student_id")
+    .in("student_id", studentIds);
+  const studentIdBySession = new Map((sessions ?? []).map((s) => [s.id, s.student_id]));
+  const sessionIds = (sessions ?? []).map((s) => s.id);
+  if (sessionIds.length === 0) return fastestVelocityByStudent;
+
+  const { data: pitches } = await supabase
+    .from("pitch_metrics")
+    .select("session_id, velocity_kph")
+    .in("session_id", sessionIds)
+    .not("velocity_kph", "is", null);
+  for (const p of pitches ?? []) {
+    const studentId = studentIdBySession.get(p.session_id);
+    if (!studentId || p.velocity_kph == null) continue;
+    const current = fastestVelocityByStudent.get(studentId);
+    if (current == null || p.velocity_kph > current) {
+      fastestVelocityByStudent.set(studentId, p.velocity_kph);
+    }
+  }
+  return fastestVelocityByStudent;
+}
 
 export default async function CoachStudentsPage({
   searchParams,
@@ -14,16 +49,7 @@ export default async function CoachStudentsPage({
   const q = typeof qParam === "string" ? qParam.trim() : "";
   const pos = typeof posParam === "string" ? posParam : "all";
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: callerProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user!.id)
-    .single();
+  const { supabase, user, profile: callerProfile } = await getCurrentUserProfile();
   const isAdmin = callerProfile?.role === "admin";
 
   // Admin browsing this page sees every student (RLS already grants full
@@ -44,38 +70,16 @@ export default async function CoachStudentsPage({
     : { data: [] as { id: string; full_name: string; avatar_storage_key: string | null }[] };
 
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
-  const avatarUrls = await getAvatarUrls(
-    supabase,
-    (profiles ?? []).map((p) => p.avatar_storage_key)
-  );
 
-  // Batch-compute each student's fastest recorded velocity for the roster
-  // card footer (mirrors the single-student query in the detail page, but
-  // done once for the whole list instead of N+1 queries).
-  const fastestVelocityByStudent = new Map<string, number>();
-  if (studentIds.length) {
-    const { data: sessions } = await supabase
-      .from("training_sessions")
-      .select("id, student_id")
-      .in("student_id", studentIds);
-    const studentIdBySession = new Map((sessions ?? []).map((s) => [s.id, s.student_id]));
-    const sessionIds = (sessions ?? []).map((s) => s.id);
-    if (sessionIds.length) {
-      const { data: pitches } = await supabase
-        .from("pitch_metrics")
-        .select("session_id, velocity_kph")
-        .in("session_id", sessionIds)
-        .not("velocity_kph", "is", null);
-      for (const p of pitches ?? []) {
-        const studentId = studentIdBySession.get(p.session_id);
-        if (!studentId || p.velocity_kph == null) continue;
-        const current = fastestVelocityByStudent.get(studentId);
-        if (current == null || p.velocity_kph > current) {
-          fastestVelocityByStudent.set(studentId, p.velocity_kph);
-        }
-      }
-    }
-  }
+  // Independent of each other — run in parallel instead of one after the
+  // other.
+  const [avatarUrls, fastestVelocityByStudent] = await Promise.all([
+    getAvatarUrls(
+      supabase,
+      (profiles ?? []).map((p) => p.avatar_storage_key)
+    ),
+    getFastestVelocityByStudent(supabase, studentIds),
+  ]);
 
   const filteredQuery = q.toLowerCase();
   const allStudents = (studentProfiles ?? [])

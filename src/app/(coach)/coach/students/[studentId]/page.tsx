@@ -24,36 +24,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-async function getSessionIds(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  studentId: string
-): Promise<string[]> {
-  const { data: sessions } = await supabase
-    .from("training_sessions")
-    .select("id")
-    .eq("student_id", studentId);
-  return (sessions ?? []).map((s) => s.id);
-}
-
-async function getBestPitchMetric(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  sessionIds: string[],
-  column: "velocity_kph" | "spin_rate_rpm"
-): Promise<number | null> {
-  if (sessionIds.length === 0) return null;
-
-  const { data: best } = await supabase
-    .from("pitch_metrics")
-    .select(column)
-    .in("session_id", sessionIds)
-    .not(column, "is", null)
-    .order(column, { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return (best as Record<string, number | null> | null)?.[column] ?? null;
-}
-
 async function getPitchStatsBySession(
   supabase: Awaited<ReturnType<typeof createClient>>,
   sessionIds: string[]
@@ -105,21 +75,30 @@ export default async function CoachStudentDetailPage({
         .order("session_date", { ascending: false }),
     ]);
 
-  const sessionIds = await getSessionIds(supabase, studentId);
-  const [fastestVelocity, fastestSpinRate, pitchStatsBySession, { data: latestCheckpoint }] =
-    await Promise.all([
-      getBestPitchMetric(supabase, sessionIds, "velocity_kph"),
-      getBestPitchMetric(supabase, sessionIds, "spin_rate_rpm"),
-      getPitchStatsBySession(supabase, sessionIds),
-      supabase
-        .from("training_sessions")
-        .select("id, session_date")
-        .eq("student_id", studentId)
-        .eq("is_checkpoint", true)
-        .order("session_date", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]);
+  const sessionIds = (sessions ?? []).map((s) => s.id);
+  const [pitchStatsBySession, { data: latestCheckpoint }, avatarUrls] = await Promise.all([
+    getPitchStatsBySession(supabase, sessionIds),
+    supabase
+      .from("training_sessions")
+      .select("id, session_date")
+      .eq("student_id", studentId)
+      .eq("is_checkpoint", true)
+      .order("session_date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    getAvatarUrls(supabase, [profile?.avatar_storage_key ?? null]),
+  ]);
+
+  let fastestVelocity: number | null = null;
+  let fastestSpinRate: number | null = null;
+  for (const stats of pitchStatsBySession.values()) {
+    if (stats.velocity != null && (fastestVelocity == null || stats.velocity > fastestVelocity)) {
+      fastestVelocity = stats.velocity;
+    }
+    if (stats.spin != null && (fastestSpinRate == null || stats.spin > fastestSpinRate)) {
+      fastestSpinRate = stats.spin;
+    }
+  }
   const velocityBySession = new Map(
     [...pitchStatsBySession].map(([id, s]) => [id, s.velocity ?? undefined] as const)
   );
@@ -127,7 +106,6 @@ export default async function CoachStudentDetailPage({
     ? await getCheckpointFramesForSession(supabase, latestCheckpoint.id)
     : [];
 
-  const avatarUrls = await getAvatarUrls(supabase, [profile?.avatar_storage_key ?? null]);
   const avatarUrl = profile?.avatar_storage_key ? avatarUrls[profile.avatar_storage_key] ?? null : null;
   const latestMeasurement = measurements?.[0];
 

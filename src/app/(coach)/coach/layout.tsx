@@ -1,14 +1,8 @@
 import { RoleShell } from "@/components/layout/RoleShell";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserProfile } from "@/lib/supabase/currentUser";
 
 export default async function CoachLayout({ children }: LayoutProps<"/coach">) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await supabase.from("profiles").select("role, full_name").eq("id", user.id).single()
-    : { data: null };
+  const { profile } = await getCurrentUserProfile();
   const isAdmin = profile?.role === "admin";
 
   return (
