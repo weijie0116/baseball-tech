@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function StatCard({
@@ -14,24 +15,21 @@ export function StatCard({
   primary?: boolean;
 }) {
   return (
-    <Card className={primary ? "bg-primary text-primary-foreground" : undefined}>
+    <Card className={primary ? "border-primary" : undefined}>
       <CardContent className="flex flex-col gap-1.5">
-        <div className={primary ? "text-xs text-primary-foreground/80" : "text-xs text-muted-foreground"}>
-          {label}
-        </div>
+        <div className={primary ? "text-xs text-primary" : "text-xs text-muted-foreground"}>{label}</div>
         <div className="flex items-baseline gap-1.5">
-          <span className="font-numeric text-3xl font-bold leading-none tabular-nums">{value}</span>
-          {unit && (
-            <span className={primary ? "text-xs text-primary-foreground/80" : "text-xs text-muted-foreground"}>
-              {unit}
-            </span>
-          )}
+          <span
+            className={cn(
+              "font-numeric text-3xl font-bold leading-none tabular-nums",
+              primary && "text-primary"
+            )}
+          >
+            {value}
+          </span>
+          {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
         </div>
-        {subtext && (
-          <div className={primary ? "text-xs text-primary-foreground/80" : "text-xs text-muted-foreground"}>
-            {subtext}
-          </div>
-        )}
+        {subtext && <div className="text-xs text-muted-foreground">{subtext}</div>}
       </CardContent>
     </Card>
   );

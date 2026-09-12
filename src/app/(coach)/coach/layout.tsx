@@ -13,7 +13,6 @@ export default async function CoachLayout({ children }: LayoutProps<"/coach">) {
 
   return (
     <RoleShell
-      title={isAdmin ? "教練後台(管理者檢視)" : "教練後台"}
       userName={profile?.full_name ?? undefined}
       navItems={
         isAdmin

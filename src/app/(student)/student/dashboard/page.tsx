@@ -87,35 +87,35 @@ export default async function StudentDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 rounded-xl bg-primary p-6 text-primary-foreground sm:flex-row sm:items-center sm:justify-between">
+      <div className="border-primary bg-card flex flex-col gap-4 rounded-xl border p-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm text-primary-foreground/80">嗨,{profile?.full_name ?? "你好"}</span>
+          <span className="text-primary text-sm">嗨,{profile?.full_name ?? "你好"}</span>
           <h1 className="font-heading text-2xl font-bold">總覽</h1>
           {nextBooking ? (
-            <span className="text-sm text-primary-foreground/85">
+            <span className="text-muted-foreground text-sm">
               下一堂課:{formatDateLabel(nextBooking.scheduled_date)}{" "}
               {nextBooking.scheduled_time.slice(0, 5)}
               {nextBooking.notes ? ` · ${nextBooking.notes}` : ""}
             </span>
           ) : (
-            <span className="text-sm text-primary-foreground/85">目前沒有已排定的課程</span>
+            <span className="text-muted-foreground text-sm">目前沒有已排定的課程</span>
           )}
         </div>
         <div className="flex gap-6">
           <div>
-            <div className="text-xs text-primary-foreground/80">最快球速</div>
+            <div className="text-primary/80 text-xs">最快球速</div>
             <div className="font-numeric text-3xl font-bold tabular-nums">
               {fastestVelocity ?? "-"}
             </div>
           </div>
           <div>
-            <div className="text-xs text-primary-foreground/80">最高轉速</div>
+            <div className="text-primary/80 text-xs">最高轉速</div>
             <div className="font-numeric text-3xl font-bold tabular-nums">
               {fastestSpinRate ?? "-"}
             </div>
           </div>
           <div>
-            <div className="text-xs text-primary-foreground/80">累計上課</div>
+            <div className="text-primary/80 text-xs">累計上課</div>
             <div className="font-numeric text-3xl font-bold tabular-nums">
               {(sessions ?? []).length}
             </div>

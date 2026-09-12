@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "投手成長歷程追蹤",
-  description: "棒球投手學員訓練紀錄與成長歷程追蹤系統",
+  title: "RELEASE LAB",
+  description: "投手訓練數據與成長追蹤",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
