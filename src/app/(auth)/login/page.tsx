@@ -35,7 +35,7 @@ export default async function LoginPage() {
           alt=""
           width={460}
           height={460}
-          className="pointer-events-none absolute -right-[70px] -bottom-[30px] w-[460px] opacity-[0.07] invert"
+          className="pointer-events-none absolute right-0 -bottom-[30px] w-[460px] opacity-[0.07] invert"
         />
         <div className="relative flex items-center gap-3.5">
           <span className="border-primary flex size-[46px] items-center justify-center overflow-hidden rounded-full border-2">
