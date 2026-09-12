@@ -37,17 +37,17 @@ export default async function LoginPage() {
           height={460}
           className="pointer-events-none absolute -right-[70px] -bottom-[30px] w-[460px] opacity-[0.07] invert"
         />
-        <div className="relative flex items-center gap-2.5">
-          <span className="border-primary flex size-[30px] items-center justify-center overflow-hidden rounded-full border-[1.5px]">
+        <div className="relative flex items-center gap-3.5">
+          <span className="border-primary flex size-[46px] items-center justify-center overflow-hidden rounded-full border-2">
             <Image
               src="/logo-pitcher.png"
               alt=""
-              width={22}
-              height={22}
-              className="size-[22px] object-contain [filter:brightness(0)_invert(76%)_sepia(38%)_saturate(620%)_hue-rotate(2deg)_brightness(96%)]"
+              width={34}
+              height={34}
+              className="size-[34px] object-contain [filter:brightness(0)_invert(76%)_sepia(38%)_saturate(620%)_hue-rotate(2deg)_brightness(96%)]"
             />
           </span>
-          <span className="font-numeric text-lg font-bold tracking-[0.13em]">RELEASE LAB</span>
+          <span className="font-numeric text-2xl font-bold tracking-[0.13em]">RELEASE LAB</span>
         </div>
         <div className="relative flex max-w-md flex-col gap-4">
           <h1 className="font-heading text-primary text-4xl leading-tight font-bold text-balance">
